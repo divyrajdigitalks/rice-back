@@ -67,6 +67,32 @@ const createLead = async (req, res, next) => {
   }
 };
 
+// @desc    Create new lead from bot
+// @route   POST /api/leads/bot
+// @access  Public
+const createLeadBot = async (req, res, next) => {
+  try {
+    // Mapping bot fields if they differ, fallback to standard fields
+    const { fullName, mobileNumber, companyName, country, city, contactPerson, phone } = req.body;
+    
+    const lead = await Lead.create({
+      contactPerson: fullName || contactPerson,
+      phone: mobileNumber || phone,
+      companyName: companyName || 'Unknown Company',
+      country,
+      city,
+      status: 'New'
+    });
+
+    res.status(201).json({
+      success: true,
+      data: lead,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Update lead
 // @route   PUT /api/leads/:id
 // @access  Public
@@ -111,6 +137,7 @@ module.exports = {
   getLeads,
   getLead,
   createLead,
+  createLeadBot,
   updateLead,
   deleteLead,
 };

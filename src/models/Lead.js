@@ -33,6 +33,9 @@ const leadSchema = new mongoose.Schema(
     country: {
       type: String,
     },
+    city: {
+      type: String,
+    },
     priceType: {
       type: String,
     },

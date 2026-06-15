@@ -1,0 +1,44 @@
+{
+	"info": {
+		"name": "Rice Leads Bot API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Create Lead (WhatsApp Bot)",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"fullName\": \"John Doe\",\n  \"mobileNumber\": \"1234567890\",\n  \"companyName\": \"ABC Corp\",\n  \"country\": \"India\",\n  \"city\": \"Ahmedabad\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:5000/api/leads/bot",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"api",
+						"leads",
+						"bot"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
