@@ -3,6 +3,12 @@ const Exmill = require('../models/Exmill');
 const Packaging = require('../models/Packaging');
 const Setting = require('../models/Setting');
 const Freight = require('../models/Freight');
+const mongoose = require('mongoose');
+
+// Helper function to generate sequential IDs (1, 2, 3...)
+const mapWithSequentialId = (items, startId = 1) => {
+  return items.map((item, index) => ({ id: String(startId + index), name: item }));
+};
 
 // Helper for parsing grams from size string for sorting/grouping
 const parseSizeInGrams = (sizeStr) => {
@@ -13,42 +19,85 @@ const parseSizeInGrams = (sizeStr) => {
   return 0;
 };
 
-// @desc    Get dynamic sizes grouped by Retail vs Bulk
-// @route   GET /api/bot/menus/sizes
+// @desc    Get just the size groups
+// @route   GET /api/bot/menus/size-groups
 // @access  Public
-const getDynamicSizes = async (req, res, next) => {
+const getSizeGroups = async (req, res, next) => {
   try {
-    const distinctSizes = await Packaging.distinct('packSize');
-
-    // Sort sizes logically
-    distinctSizes.sort((a, b) => parseSizeInGrams(a) - parseSizeInGrams(b));
-
-    const retailSizes = [];
-    const bulkSizes = [];
-
-    distinctSizes.forEach(size => {
-      const grams = parseSizeInGrams(size);
-      const isLbs = size.toLowerCase().includes('lbs');
-      // If it's lbs or > 25kg, consider it bulk
-      if (isLbs || grams > 25000) {
-        bulkSizes.push(size);
-      } else {
-        retailSizes.push(size);
-      }
-    });
-
+    const groups = [
+      { id: "1", name: "RETAIL / SMALL PACK" },
+      { id: "2", name: "BULK / EXPORT PACK" }
+    ];
     res.status(200).json({
       success: true,
-      data: {
-        "RETAIL / SMALL PACK": retailSizes,
-        "BULK / EXPORT PACK": bulkSizes
-      }
+      data: groups
     });
   } catch (error) {
     next(error);
   }
 };
 
+// @desc    Get dynamic sizes grouped by Retail vs Bulk
+// @route   GET /api/bot/menus/sizes
+// @access  Public
+const getDynamicSizes = async (req, res, next) => {
+  try {
+    const distinctSizes = await Packaging.distinct('packSize');
+    distinctSizes.sort((a, b) => parseSizeInGrams(a) - parseSizeInGrams(b));
+
+    const retailSizes = [];
+    const bulkSizes = [];
+    let idCounter = 1;
+
+    distinctSizes.forEach(size => {
+      const grams = parseSizeInGrams(size);
+      const isLbs = size.toLowerCase().includes('lbs');
+      if (isLbs || grams > 25000) {
+        bulkSizes.push({ id: String(idCounter++), name: size });
+      } else {
+        retailSizes.push({ id: String(idCounter++), name: size });
+      }
+    });
+
+    const groups = {
+      "RETAIL / SMALL PACK": retailSizes,
+      "BULK / EXPORT PACK": bulkSizes
+    };
+
+    let responseData = groups;
+    if (req.query.group) {
+      const q = req.query.group.toUpperCase();
+      const key = Object.keys(groups).find(k => k.toUpperCase().includes(q));
+      if (key) responseData = { [key]: groups[key] };
+      else responseData = {};
+    }
+
+    res.status(200).json({
+      success: true,
+      data: responseData
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+// @desc    Get just the packaging type groups
+// @route   GET /api/bot/menus/packaging-type-groups
+// @access  Public
+const getPackagingTypeGroups = async (req, res, next) => {
+  try {
+    const groups = [
+      { id: "1", name: "JUTE BAGS" },
+      { id: "2", name: "PP / BOPP BAGS" },
+      { id: "3", name: "2D POUCHES" },
+      { id: "4", name: "3D POUCHES" },
+      { id: "5", name: "CENTRE SEAL POUCHES" },
+      { id: "6", name: "OTHER" }
+    ];
+    res.status(200).json({ success: true, data: groups });
+  } catch (error) {
+    next(error);
+  }
+};
 // @desc    Get dynamic packaging types based on size, grouped
 // @route   GET /api/bot/menus/packaging-types
 // @access  Public
@@ -66,7 +115,6 @@ const getDynamicPackagingTypes = async (req, res, next) => {
 
     allPackaging.forEach(doc => {
       if (targetGrams) {
-        // match by calculated grams instead of strict text
         if (parseSizeInGrams(doc.packSize) === targetGrams) {
           matchedNames.add(doc.productName);
         }
@@ -84,20 +132,22 @@ const getDynamicPackagingTypes = async (req, res, next) => {
       "OTHER": []
     };
 
+    let idCounter = 1;
     matchedNames.forEach(name => {
       const lowerName = name.toLowerCase();
+      const obj = { id: String(idCounter++), name };
       if (lowerName.includes('jute')) {
-        groups["JUTE BAGS"].push(name);
+        groups["JUTE BAGS"].push(obj);
       } else if (lowerName.includes('2d pouch')) {
-        groups["2D POUCHES"].push(name);
+        groups["2D POUCHES"].push(obj);
       } else if (lowerName.includes('3d pouch')) {
-        groups["3D POUCHES"].push(name);
+        groups["3D POUCHES"].push(obj);
       } else if (lowerName.includes('centre seal')) {
-        groups["CENTRE SEAL POUCHES"].push(name);
+        groups["CENTRE SEAL POUCHES"].push(obj);
       } else if (lowerName.includes('pp') || lowerName.includes('bopp') || lowerName.includes('fabric') || lowerName.includes('non-woven')) {
-        groups["PP / BOPP BAGS"].push(name);
+        groups["PP / BOPP BAGS"].push(obj);
       } else {
-        groups["OTHER"].push(name);
+        groups["OTHER"].push(obj);
       }
     });
 
@@ -106,15 +156,36 @@ const getDynamicPackagingTypes = async (req, res, next) => {
       if (groups[key].length === 0) delete groups[key];
     });
 
+    let responseData = groups;
+    if (req.query.group) {
+      const q = req.query.group.toUpperCase();
+      const key = Object.keys(groups).find(k => k.toUpperCase().includes(q));
+      if (key) responseData = { [key]: groups[key] };
+      else responseData = {};
+    }
+
     res.status(200).json({
       success: true,
-      data: groups
+      data: responseData
     });
   } catch (error) {
     next(error);
   }
 };
-
+// @desc    Get just the variety groups
+// @route   GET /api/bot/menus/variety-groups
+// @access  Public
+const getVarietyGroups = async (req, res, next) => {
+  try {
+    const groups = [
+      { id: "1", name: "BASMATI" },
+      { id: "2", name: "NON-BASMATI" }
+    ];
+    res.status(200).json({ success: true, data: groups });
+  } catch (error) {
+    next(error);
+  }
+};
 // @desc    Get dynamic rice varieties grouped by Basmati/Non-Basmati
 // @route   GET /api/bot/menus/varieties
 // @access  Public
@@ -127,18 +198,42 @@ const getDynamicVarieties = async (req, res, next) => {
       "NON-BASMATI": []
     };
 
+    let idCounter = 1;
     distinctVarieties.forEach(v => {
+      const obj = { id: String(idCounter++), name: v };
       if (v.toLowerCase().includes('basmati')) {
-        groups["BASMATI"].push(v);
+        groups["BASMATI"].push(obj);
       } else {
-        groups["NON-BASMATI"].push(v);
+        groups["NON-BASMATI"].push(obj);
       }
     });
 
+    let responseData = groups;
+    if (req.query.group) {
+      const q = req.query.group.toUpperCase();
+      const key = Object.keys(groups).find(k => k.toUpperCase().includes(q));
+      if (key) responseData = { [key]: groups[key] };
+      else responseData = {};
+    }
+
     res.status(200).json({
       success: true,
-      data: groups
+      data: responseData
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get just the form groups
+// @route   GET /api/bot/menus/form-groups
+// @access  Public
+const getFormGroups = async (req, res, next) => {
+  try {
+    const groups = [
+      { id: "1", name: "PROCESSING METHOD" }
+    ];
+    res.status(200).json({ success: true, data: groups });
   } catch (error) {
     next(error);
   }
@@ -157,14 +252,23 @@ const getDynamicForms = async (req, res, next) => {
     }
 
     const distinctForms = await Exmill.find(filter).distinct('form');
+    const mappedForms = mapWithSequentialId(distinctForms);
 
     const groups = {
-      "PROCESSING METHOD": distinctForms
+      "PROCESSING METHOD": mappedForms
     };
+
+    let responseData = groups;
+    if (req.query.group) {
+      const q = req.query.group.toUpperCase();
+      const key = Object.keys(groups).find(k => k.toUpperCase().includes(q));
+      if (key) responseData = { [key]: groups[key] };
+      else responseData = {};
+    }
 
     res.status(200).json({
       success: true,
-      data: groups
+      data: responseData
     });
   } catch (error) {
     next(error);
@@ -211,7 +315,7 @@ const getSetting = async (key, fallback) => {
 // @access  Public
 const calculateExMillQuote = async (req, res, next) => {
   try {
-    const { variety, form, size, packType } = req.body;
+    let { variety, form, size, packType } = req.body;
 
     if (!variety || !form || !size || !packType) {
       return res.status(400).json({ success: false, error: 'Variety, form, size, and packType are required' });
@@ -280,7 +384,7 @@ const calculateExMillQuote = async (req, res, next) => {
 // Helper for Region mapping
 const getRegionForCountry = (countryStr) => {
   const c = countryStr.toLowerCase();
-  
+
   const middleEast = ['uae', 'saudi', 'oman', 'qatar', 'kuwait', 'bahrain', 'iraq', 'iran', 'yemen', 'lebanon', 'jordan', 'syria', 'israel', 'palestine', 'dubai', 'abu dhabi'];
   const europe = ['uk', 'germany', 'france', 'italy', 'spain', 'netherland', 'belgium', 'russia', 'sweden', 'norway', 'poland', 'europe', 'ireland', 'portugal', 'greece', 'swiss', 'austria', 'denmark', 'finland'];
   const africa = ['africa', 'nigeria', 'kenya', 'egypt', 'morocco', 'ghana', 'tanzania', 'djibouti', 'somalia', 'senegal', 'ivory coast', 'cameroon', 'sudan', 'uganda', 'algeria', 'angola', 'mozambique', 'madagascar'];
@@ -294,7 +398,7 @@ const getRegionForCountry = (countryStr) => {
   if (asia.some(x => c.includes(x))) return "Asia";
   if (americas.some(x => c.includes(x))) return "Americas";
   if (oceania.some(x => c.includes(x))) return "AU Oceania";
-  
+
   return "Other";
 };
 
@@ -312,11 +416,23 @@ const getDynamicRegions = async (req, res, next) => {
       "AU Oceania"
     ];
 
+    const mappedRegions = mapWithSequentialId(regions);
+
+    const groups = {
+      "REGION": mappedRegions
+    };
+
+    let responseData = groups;
+    if (req.query.group) {
+      const q = req.query.group.toUpperCase();
+      const key = Object.keys(groups).find(k => k.toUpperCase().includes(q));
+      if (key) responseData = { [key]: groups[key] };
+      else responseData = {};
+    }
+
     res.status(200).json({
       success: true,
-      data: {
-        "REGION": regions
-      }
+      data: responseData
     });
   } catch (error) {
     next(error);
@@ -349,16 +465,40 @@ const getSubRegion = (region, countryStr) => {
   return 'OCEANIA';
 };
 
+// @desc    Get just the country sub-regions
+// @route   GET /api/bot/menus/country-groups
+// @access  Public
+const getCountryGroups = async (req, res, next) => {
+  try {
+    const { region } = req.query;
+    const allFreights = await Freight.find().select('country');
+    
+    const subRegionsSet = new Set();
+
+    allFreights.forEach(f => {
+      const fRegion = getRegionForCountry(f.country);
+      if (!region || region === 'Other' || fRegion === region) {
+        subRegionsSet.add(getSubRegion(fRegion, f.country));
+      }
+    });
+
+    const groups = Array.from(subRegionsSet).sort().map((sr, index) => ({ id: String(index + 1), name: sr }));
+    
+    res.status(200).json({ success: true, data: groups });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Get dynamic countries/ports grouped by sub-region
 // @route   GET /api/bot/menus/countries
 // @access  Public
 const getDynamicCountries = async (req, res, next) => {
   try {
     const { region } = req.query;
-    
-    // Fetch all freight entries
+
     const allFreights = await Freight.find().select('country portName');
-    
+
     const groups = {};
 
     allFreights.forEach(f => {
@@ -366,20 +506,30 @@ const getDynamicCountries = async (req, res, next) => {
       if (!region || region === 'Other' || fRegion === region) {
         const subRegion = getSubRegion(fRegion, f.country);
         if (!groups[subRegion]) groups[subRegion] = new Set();
-        // Format exactly as requested: Country — Port
-        groups[subRegion].add(`${f.country} — ${f.portName}`);
+        const formatted = `${f.country} — ${f.portName}`;
+        groups[subRegion].add(formatted);
       }
     });
 
     // Convert Sets to Arrays
     const formattedData = {};
+    let idCounter = 1;
     for (const sub in groups) {
-      formattedData[sub] = Array.from(groups[sub]).sort();
+      const sortedEntries = Array.from(groups[sub]).sort((a, b) => a.localeCompare(b));
+      formattedData[sub] = sortedEntries.map(name => ({ id: String(idCounter++), name }));
+    }
+
+    let responseData = formattedData;
+    if (req.query.group) {
+      const q = req.query.group.toUpperCase();
+      const key = Object.keys(formattedData).find(k => k.toUpperCase().includes(q));
+      if (key) responseData = { [key]: formattedData[key] };
+      else responseData = {};
     }
 
     res.status(200).json({
       success: true,
-      data: formattedData
+      data: responseData
     });
   } catch (error) {
     next(error);
@@ -392,7 +542,7 @@ const getDynamicCountries = async (req, res, next) => {
 // @access  Public
 const calculateQuote = async (req, res, next) => {
   try {
-    const { variety, form, size, packType, country, portName, destination } = req.body;
+    let { variety, form, size, packType, country, portName, destination } = req.body;
 
     let targetCountry = country;
     let targetPort = portName;
@@ -427,7 +577,7 @@ const calculateQuote = async (req, res, next) => {
 
     const targetGrams = parseSizeInGrams(size);
     const flexiType = packType.replace(/[^a-zA-Z0-9]+/g, '.*');
-    
+
     const allPacks = await Packaging.find({
       productName: { $regex: new RegExp(flexiType, 'i') }
     });
@@ -440,7 +590,7 @@ const calculateQuote = async (req, res, next) => {
 
     const containerMt = packData.mtCapacity;
     const packInrPerUnit = packData.packagingRate;
-    
+
     const sizeGrams = parseSizeInGrams(size) || 1000;
     const unitsPerMt = 1000000 / sizeGrams;
 
@@ -449,7 +599,7 @@ const calculateQuote = async (req, res, next) => {
     let hasFreight = false;
 
     if (targetCountry && targetPort) {
-      const freightData = await Freight.findOne({ 
+      const freightData = await Freight.findOne({
         country: { $regex: new RegExp(`^${targetCountry}$`, 'i') },
         portName: { $regex: new RegExp(`^${targetPort}$`, 'i') }
       });
@@ -469,7 +619,7 @@ const calculateQuote = async (req, res, next) => {
     const rawInlandUsd = inlandInrPerMt / rate;
     const rawCustomsUsd = (customsInrPerContainer / rate) / containerMt;
     const rawPackUsd = (packInrPerUnit * unitsPerMt) / rate;
-    
+
     const exMillUsdPerMt = roundTo5(rawExMillUsd);
     const inlandUsdPerMt = roundTo5(rawInlandUsd);
     const customsUsdPerMt = roundTo5(rawCustomsUsd);
@@ -486,7 +636,7 @@ const calculateQuote = async (req, res, next) => {
 
       const seaFreightUsdPerMt = roundTo5(rawSeaFreightUsd);
       const cocUsdPerMt = roundTo5(rawCocUsd);
-      
+
       totalSeaAndCocUsdPerMt = seaFreightUsdPerMt + cocUsdPerMt;
       cifUsdPerMt = fobUsdPerMt + totalSeaAndCocUsdPerMt;
     }
@@ -504,7 +654,7 @@ const calculateQuote = async (req, res, next) => {
     } else {
       message += `📋 DCS EX MILL / FOB — Live Price Quote\n`;
     }
-    
+
     message += `📅 ${dateString}\n`;
     message += `Source updated: 24 Apr 2026 (demo)\n\n`;
 
@@ -571,11 +721,16 @@ const calculateQuote = async (req, res, next) => {
 };
 
 module.exports = {
+  getSizeGroups,
   getDynamicSizes,
+  getPackagingTypeGroups,
   getDynamicPackagingTypes,
+  getVarietyGroups,
   getDynamicVarieties,
+  getFormGroups,
   getDynamicForms,
   getDynamicRegions,
+  getCountryGroups,
   getDynamicCountries,
   calculateQuote,
   createLeadBot

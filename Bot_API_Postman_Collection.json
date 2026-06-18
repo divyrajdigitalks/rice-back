@@ -26,12 +26,34 @@
 			"response": []
 		},
 		{
-			"name": "Get Dynamic Sizes",
+			"name": "Get Menu Categories (Size Groups)",
 			"request": {
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "http://localhost:5000/api/bot/menus/sizes",
+					"raw": "http://localhost:5000/api/bot/menus/size-groups",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"api",
+						"bot",
+						"menus",
+						"size-groups"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Dynamic Sizes (All or Filtered)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:5000/api/bot/menus/sizes?group=RETAIL",
 					"protocol": "http",
 					"host": [
 						"localhost"
@@ -42,6 +64,34 @@
 						"bot",
 						"menus",
 						"sizes"
+					],
+					"query": [
+						{
+							"key": "group",
+							"value": "RETAIL"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Menu Categories (Packaging Type Groups)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:5000/api/bot/menus/packaging-type-groups",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"api",
+						"bot",
+						"menus",
+						"packaging-type-groups"
 					]
 				}
 			},
@@ -53,7 +103,7 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "http://localhost:5000/api/bot/menus/packaging-types?size=800 g",
+					"raw": "http://localhost:5000/api/bot/menus/packaging-types?size=800 g&group=JUTE BAGS",
 					"protocol": "http",
 					"host": [
 						"localhost"
@@ -69,7 +119,33 @@
 						{
 							"key": "size",
 							"value": "800 g"
+						},
+						{
+							"key": "group",
+							"value": "JUTE BAGS"
 						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Menu Categories (Variety Groups)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:5000/api/bot/menus/variety-groups",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"api",
+						"bot",
+						"menus",
+						"variety-groups"
 					]
 				}
 			},
@@ -81,7 +157,7 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "http://localhost:5000/api/bot/menus/varieties",
+					"raw": "http://localhost:5000/api/bot/menus/varieties?group=BASMATI",
 					"protocol": "http",
 					"host": [
 						"localhost"
@@ -92,6 +168,34 @@
 						"bot",
 						"menus",
 						"varieties"
+					],
+					"query": [
+						{
+							"key": "group",
+							"value": "BASMATI"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Menu Categories (Form Groups)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:5000/api/bot/menus/form-groups",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"api",
+						"bot",
+						"menus",
+						"form-groups"
 					]
 				}
 			},
@@ -103,7 +207,7 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "http://localhost:5000/api/bot/menus/forms?variety=1121 Basmati",
+					"raw": "http://localhost:5000/api/bot/menus/forms?variety=1121 Basmati&group=PROCESSING METHOD",
 					"protocol": "http",
 					"host": [
 						"localhost"
@@ -119,6 +223,10 @@
 						{
 							"key": "variety",
 							"value": "1121 Basmati"
+						},
+						{
+							"key": "group",
+							"value": "PROCESSING METHOD"
 						}
 					]
 				}
@@ -131,7 +239,7 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "http://localhost:5000/api/bot/menus/regions",
+					"raw": "http://localhost:5000/api/bot/menus/regions?group=REGION",
 					"protocol": "http",
 					"host": [
 						"localhost"
@@ -142,6 +250,40 @@
 						"bot",
 						"menus",
 						"regions"
+					],
+					"query": [
+						{
+							"key": "group",
+							"value": "REGION"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Menu Categories (Country Sub-Regions)",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:5000/api/bot/menus/country-groups?region=Middle East",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"api",
+						"bot",
+						"menus",
+						"country-groups"
+					],
+					"query": [
+						{
+							"key": "region",
+							"value": "Middle East"
+						}
 					]
 				}
 			},
