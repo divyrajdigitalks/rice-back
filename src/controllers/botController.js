@@ -135,7 +135,11 @@ const getDynamicPackagingTypes = async (req, res, next) => {
     let idCounter = 1;
     matchedNames.forEach(name => {
       const lowerName = name.toLowerCase();
-      const obj = { id: String(idCounter++), name };
+      let displayName = name;
+      if (displayName.length > 20) {
+        displayName = displayName.substring(0, 20) + '..';
+      }
+      const obj = { id: String(idCounter++), name: displayName };
       if (lowerName.includes('jute')) {
         groups["JUTE BAGS"].push(obj);
       } else if (lowerName.includes('2d pouch')) {
