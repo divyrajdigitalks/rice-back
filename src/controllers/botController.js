@@ -306,82 +306,18 @@ const createLeadBot = async (req, res, next) => {
 };
 
 // Helper to get settings safely
-const getSetting = async (key, fallback) => {
-  const setting = await Setting.findOne({ key });
-  if (setting && setting.value) {
-    return Number(setting.value);
+const getSettingsDoc = async () => {
+  let settings = await Setting.findOne();
+  if (!settings) {
+    try {
+      settings = await Setting.create({});
+    } catch (e) {
+      // Ignore unique constraint errors if created concurrently
+    }
   }
-  return fallback;
+  return settings || {};
 };
 
-// @desc    Calculate EX MILL quote
-// @route   POST /api/bot/quote/exmill
-// @access  Public
-const calculateExMillQuote = async (req, res, next) => {
-  try {
-    let { variety, form, size, packType } = req.body;
-
-    if (!variety || !form || !size || !packType) {
-      return res.status(400).json({ success: false, error: 'Variety, form, size, and packType are required' });
-    }
-
-    // 1. Fetch EX MILL rate (inrPerKg)
-    const exmillData = await Exmill.findOne({
-      variety: { $regex: new RegExp(`^${variety}$`, 'i') },
-      form: { $regex: new RegExp(`^${form}$`, 'i') }
-    });
-
-    if (!exmillData || !exmillData.inrPerKg) {
-      return res.status(404).json({ success: false, error: `ExMill rate not found for ${variety} - ${form}` });
-    }
-
-    const inrPerKg = exmillData.inrPerKg;
-    let inrPerMt = inrPerKg * 1000;
-
-    // "INR figures rounded to the nearest ₹100"
-    inrPerMt = Math.round(inrPerMt / 100) * 100;
-    const roundedInrPerKg = inrPerMt / 1000;
-
-    // 2. Fetch Container Loading (mtCapacity) from Packaging
-    const packData = await Packaging.findOne({
-      productName: { $regex: new RegExp(`^${packType.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}$`, 'i') },
-      packSize: { $regex: new RegExp(`^${size.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}$`, 'i') }
-    });
-
-    let containerMt = 25; // fallback
-    if (packData && packData.mtCapacity) {
-      containerMt = packData.mtCapacity;
-    }
-
-    // 3. Fetch USD/INR rate
-    const rate = await getSetting('USD_INR_RATE', 93.5);
-
-    // 4. Calculate USD/MT
-    // USD reference at USD/INR rate
-    const rawUsdPerMt = inrPerMt / rate;
-
-    // "All figures rounded to the nearest USD 5 / MT for clarity" (from previous logic, but let's apply to USD here too)
-    const exMillUsdPerMt = Math.round(rawUsdPerMt / 5) * 5;
-
-    res.status(200).json({
-      success: true,
-      data: {
-        variety,
-        form,
-        size,
-        packType,
-        inrPerMt,
-        inrPerKg: roundedInrPerKg,
-        exMillUsdPerMt,
-        containerMt,
-        rate
-      }
-    });
-
-  } catch (error) {
-    next(error);
-  }
-};
 
 // --- CIF APIs ---
 
@@ -476,7 +412,7 @@ const getCountryGroups = async (req, res, next) => {
   try {
     const { region } = req.query;
     const allFreights = await Freight.find().select('country');
-    
+
     const subRegionsSet = new Set();
 
     allFreights.forEach(f => {
@@ -487,7 +423,7 @@ const getCountryGroups = async (req, res, next) => {
     });
 
     const groups = Array.from(subRegionsSet).sort().map((sr, index) => ({ id: String(index + 1), name: sr }));
-    
+
     res.status(200).json({ success: true, data: groups });
   } catch (error) {
     next(error);
@@ -575,9 +511,10 @@ const calculateQuote = async (req, res, next) => {
     const inrPerKg = exmillData.inrPerKg;
     const rawInrPerMt = inrPerKg * 1000;
 
-    const rate = await getSetting('USD_INR_RATE', 93.5);
-    const inlandInrPerMt = await getSetting('INLAND_FREIGHT_INR', 2000);
-    const customsInrPerContainer = await getSetting('CUSTOMS_THC_INR', 45000);
+    const settingsDoc = await getSettingsDoc();
+    const rate = settingsDoc.usdInrRate || 93.5;
+    const inlandInrPerMt = settingsDoc.inlandFreight || 2000;
+    const customsInrPerContainer = settingsDoc.customsThc || 45000;
 
     const targetGrams = parseSizeInGrams(size);
     const flexiType = packType.replace(/[^a-zA-Z0-9]+/g, '.*');
@@ -668,8 +605,14 @@ const calculateQuote = async (req, res, next) => {
       message += `🌍 Destination: ${destName}\n`;
     }
     message += `\n`;
+    const inrPerMt = Math.round(rawInrPerMt / 100) * 100;
+    const roundedInrPerKg = inrPerMt / 1000;
+    const inrPerMtStr = inrPerMt.toLocaleString('en-IN');
 
-    message += `💵 Ex-Mill: $${exMillUsdPerMt} USD/MT\n`;
+    message += `💵 Mill-Gate Price:\n`;
+    message += `• ₹${inrPerMtStr} / MT (≈ ₹${roundedInrPerKg} / kg)\n`;
+    message += `• $${exMillUsdPerMt} USD/MT (reference @ USD/INR ${rate})\n\n`;
+
     message += `🚢 FOB: $${fobUsdPerMt} USD/MT\n`;
     if (hasFreight) {
       message += `📦 CIF ${destName}: $${cifUsdPerMt} USD/MT\n`;
@@ -705,6 +648,8 @@ const calculateQuote = async (req, res, next) => {
         packType,
         destination: hasFreight ? destName : null,
         containerMt,
+        inrPerMt,
+        inrPerKg: roundedInrPerKg,
         exMillUsdPerMt,
         inlandUsdPerMt,
         customsUsdPerMt,

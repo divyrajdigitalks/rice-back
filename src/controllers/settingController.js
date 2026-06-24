@@ -1,50 +1,33 @@
 const Setting = require('../models/Setting');
 
-// @desc    Get a setting by key
-// @route   GET /api/settings/:key
+// @desc    Get system settings
+// @route   GET /api/settings
 // @access  Public (for now)
-exports.getSettingByKey = async (req, res, next) => {
+exports.getSettings = async (req, res, next) => {
   try {
-    let setting = await Setting.findOne({ key: req.params.key });
+    let settings = await Setting.findOne();
 
-    if (!setting) {
-      const defaultValues = {
-        'USD_INR_RATE': '93.50',
-        'DOLLAR_RATE': '93.50', // legacy
-        'INLAND_FREIGHT_INR': '2000',
-        'CUSTOMS_THC_INR': '45000'
-      };
-
-      if (defaultValues[req.params.key]) {
-        setting = await Setting.create({ key: req.params.key, value: defaultValues[req.params.key] });
-      } else {
-        return res.status(404).json({ success: false, error: 'Setting not found' });
-      }
+    if (!settings) {
+      settings = await Setting.create({});
     }
 
-    res.status(200).json({ success: true, data: setting });
+    res.status(200).json({ success: true, data: settings });
   } catch (err) {
     next(err);
   }
 };
 
-// @desc    Update or Create a setting
-// @route   PUT /api/settings/:key
+// @desc    Update system settings
+// @route   PUT /api/settings
 // @access  Public (for now)
-exports.updateSetting = async (req, res, next) => {
+exports.updateSettings = async (req, res, next) => {
   try {
-    const { value } = req.body;
-
-    let setting = await Setting.findOne({ key: req.params.key });
-
-    if (setting) {
-      setting.value = value;
-      await setting.save();
-    } else {
-      setting = await Setting.create({ key: req.params.key, value });
-    }
-
-    res.status(200).json({ success: true, data: setting });
+    const updated = await Setting.findOneAndUpdate(
+      {},
+      { $set: req.body },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    );
+    res.status(200).json({ success: true, data: updated });
   } catch (err) {
     next(err);
   }
