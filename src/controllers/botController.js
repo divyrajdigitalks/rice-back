@@ -90,8 +90,7 @@ const getPackagingTypeGroups = async (req, res, next) => {
       { id: "2", name: "PP / BOPP BAGS" },
       { id: "3", name: "2D POUCHES" },
       { id: "4", name: "3D POUCHES" },
-      { id: "5", name: "CENTRE SEAL POUCHES" },
-      { id: "6", name: "OTHER" }
+      { id: "5", name: "CENTRE SEAL POUCHES" }
     ];
     res.status(200).json({ success: true, data: groups });
   } catch (error) {
@@ -128,8 +127,7 @@ const getDynamicPackagingTypes = async (req, res, next) => {
       "PP / BOPP BAGS": [],
       "2D POUCHES": [],
       "3D POUCHES": [],
-      "CENTRE SEAL POUCHES": [],
-      "OTHER": []
+      "CENTRE SEAL POUCHES": []
     };
 
     let idCounter = 1;
@@ -150,8 +148,6 @@ const getDynamicPackagingTypes = async (req, res, next) => {
         groups["CENTRE SEAL POUCHES"].push(obj);
       } else if (lowerName.includes('pp') || lowerName.includes('bopp') || lowerName.includes('fabric') || lowerName.includes('non-woven')) {
         groups["PP / BOPP BAGS"].push(obj);
-      } else {
-        groups["OTHER"].push(obj);
       }
     });
 
