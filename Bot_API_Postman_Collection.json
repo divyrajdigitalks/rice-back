@@ -81,7 +81,7 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "http://localhost:5000/api/bot/menus/packaging-type-groups",
+					"raw": "http://localhost:5000/api/bot/menus/packaging-type-groups?size=800 g&group=JUTE BAGS",
 					"protocol": "http",
 					"host": [
 						"localhost"
@@ -92,6 +92,16 @@
 						"bot",
 						"menus",
 						"packaging-type-groups"
+					],
+					"query": [
+						{
+							"key": "size",
+							"value": "800 g"
+						},
+						{
+							"key": "group",
+							"value": "JUTE BAGS"
+						}
 					]
 				}
 			},
@@ -330,7 +340,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n  \"variety\": \"1121 Basmati\",\n  \"form\": \"Steam\",\n  \"size\": \"500 gram\",\n  \"packType\": \"Fabric / Non woven Bags\",\n  \"destination\": \"UAE — Jebel Ali\"\n}",
+					"raw": "{\n  \"variety\": \"1121 Basmati\",\n  \"form\": \"Steam\",\n  \"size\": \"500 gm\",\n  \"packType\": \"Fabric / Non woven Bags\",\n  \"destination\": \"UAE — Jebel Ali\",\n  \"leadId\": \"OPTIONAL_LEAD_ID_HERE\"\n}",
 					"options": {
 						"raw": {
 							"language": "json"

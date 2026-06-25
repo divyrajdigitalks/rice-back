@@ -85,14 +85,59 @@ const getDynamicSizes = async (req, res, next) => {
 // @access  Public
 const getPackagingTypeGroups = async (req, res, next) => {
   try {
-    const groups = [
-      { id: "1", name: "JUTE BAGS" },
-      { id: "2", name: "PP / BOPP BAGS" },
-      { id: "3", name: "2D POUCHES" },
-      { id: "4", name: "3D POUCHES" },
-      { id: "5", name: "CENTRE SEAL POUCHES" }
-    ];
-    res.status(200).json({ success: true, data: groups });
+    const { size, group } = req.query;
+
+    let targetGrams = null;
+    if (size) {
+      targetGrams = parseSizeInGrams(size);
+    }
+
+    const allPackaging = await Packaging.find().select('productName packSize');
+    const matchedNames = new Set();
+
+    allPackaging.forEach(doc => {
+      if (targetGrams) {
+        if (parseSizeInGrams(doc.packSize) === targetGrams) {
+          matchedNames.add(doc.productName);
+        }
+      } else {
+        matchedNames.add(doc.productName);
+      }
+    });
+
+    const groupCounts = {
+      "JUTE BAGS": 0,
+      "PP / BOPP BAGS": 0,
+      "2D POUCHES": 0,
+      "3D POUCHES": 0,
+      "CENTRE SEAL POUCHES": 0
+    };
+
+    matchedNames.forEach(name => {
+      const lowerName = name.toLowerCase();
+      if (lowerName.includes('jute')) {
+        groupCounts["JUTE BAGS"]++;
+      } else if (lowerName.includes('2d pouch')) {
+        groupCounts["2D POUCHES"]++;
+      } else if (lowerName.includes('3d pouch')) {
+        groupCounts["3D POUCHES"]++;
+      } else if (lowerName.includes('centre seal')) {
+        groupCounts["CENTRE SEAL POUCHES"]++;
+      } else if (lowerName.includes('pp') || lowerName.includes('bopp') || lowerName.includes('fabric') || lowerName.includes('non-woven')) {
+        groupCounts["PP / BOPP BAGS"]++;
+      }
+    });
+
+    let availableGroups = Object.keys(groupCounts).filter(key => groupCounts[key] > 0);
+
+    if (group) {
+      const q = group.toUpperCase();
+      availableGroups = availableGroups.filter(g => g.toUpperCase().includes(q));
+    }
+
+    const groupsResponse = availableGroups.map((name, index) => ({ id: String(index + 1), name }));
+
+    res.status(200).json({ success: true, data: groupsResponse });
   } catch (error) {
     next(error);
   }
@@ -284,7 +329,7 @@ const createLeadBot = async (req, res, next) => {
     const { fullName, mobileNumber, companyName, country, city, contactPerson, phone } = req.body;
 
     const lead = await Lead.create({
-      contactPerson: fullName || contactPerson,
+      contactPerson: fullName || contactPerson || 'Unknown Contact',
       phone: mobileNumber || phone,
       companyName: companyName || 'Unknown Company',
       country,
@@ -478,7 +523,7 @@ const getDynamicCountries = async (req, res, next) => {
 // @access  Public
 const calculateQuote = async (req, res, next) => {
   try {
-    let { variety, form, size, packType, country, portName, destination } = req.body;
+    let { variety, form, size, packType, country, portName, destination, leadId } = req.body;
 
     let targetCountry = country;
     let targetPort = portName;
@@ -635,29 +680,36 @@ const calculateQuote = async (req, res, next) => {
 
     message += `⚠️ Prices computed at USD/INR ${rate}`;
 
+    const quoteData = {
+      variety,
+      form,
+      size,
+      packType,
+      destination: hasFreight ? destName : null,
+      containerMt,
+      inrPerMt,
+      inrPerKg: roundedInrPerKg,
+      exMillUsdPerMt,
+      inlandUsdPerMt,
+      customsUsdPerMt,
+      packagingUsdPerMt,
+      fobUsdPerMt,
+      ...(hasFreight && {
+        seaFreightUsdPerMt: totalSeaAndCocUsdPerMt,
+        cifUsdPerMt
+      }),
+      rate,
+      message
+    };
+
+    const finalLeadId = leadId || req.body.id;
+    if (finalLeadId) {
+      await Lead.findByIdAndUpdate(finalLeadId, { quote: quoteData });
+    }
+
     res.status(200).json({
       success: true,
-      data: {
-        variety,
-        form,
-        size,
-        packType,
-        destination: hasFreight ? destName : null,
-        containerMt,
-        inrPerMt,
-        inrPerKg: roundedInrPerKg,
-        exMillUsdPerMt,
-        inlandUsdPerMt,
-        customsUsdPerMt,
-        packagingUsdPerMt,
-        fobUsdPerMt,
-        ...(hasFreight && {
-          seaFreightUsdPerMt: totalSeaAndCocUsdPerMt,
-          cifUsdPerMt
-        }),
-        rate,
-        message
-      }
+      data: quoteData
     });
 
   } catch (error) {

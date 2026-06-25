@@ -55,6 +55,9 @@ const leadSchema = new mongoose.Schema(
     cifCountry: {
       type: String,
     },
+    quote: {
+      type: Object,
+    },
   },
   {
     timestamps: true,
