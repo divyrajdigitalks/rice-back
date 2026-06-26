@@ -96,7 +96,7 @@ const getPackagingTypeGroups = async (req, res, next) => {
     const matchedNames = new Set();
 
     allPackaging.forEach(doc => {
-      if (targetGrams) {
+      if (targetGrams !== null) {
         if (parseSizeInGrams(doc.packSize) === targetGrams) {
           matchedNames.add(doc.productName);
         }
@@ -158,7 +158,7 @@ const getDynamicPackagingTypes = async (req, res, next) => {
     const matchedNames = new Set();
 
     allPackaging.forEach(doc => {
-      if (targetGrams) {
+      if (targetGrams !== null) {
         if (parseSizeInGrams(doc.packSize) === targetGrams) {
           matchedNames.add(doc.productName);
         }
