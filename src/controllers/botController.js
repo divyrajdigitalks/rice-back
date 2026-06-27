@@ -718,6 +718,32 @@ const calculateQuote = async (req, res, next) => {
   }
 };
 
+// @desc    Get Lead by ID
+// @route   GET /api/bot/lead/:id
+// @access  Public
+const getLeadById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    
+    if (!id) {
+      return res.status(400).json({ success: false, error: 'Lead ID is required' });
+    }
+
+    const lead = await Lead.findById(id);
+
+    if (!lead) {
+      return res.status(404).json({ success: false, error: 'Lead not found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: lead
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getSizeGroups,
   getDynamicSizes,
@@ -731,5 +757,6 @@ module.exports = {
   getCountryGroups,
   getDynamicCountries,
   calculateQuote,
-  createLeadBot
+  createLeadBot,
+  getLeadById
 };

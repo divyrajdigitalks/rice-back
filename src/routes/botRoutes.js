@@ -1,5 +1,5 @@
 const express = require('express');
-const { getSizeGroups, getDynamicSizes, getPackagingTypeGroups, getDynamicPackagingTypes, getVarietyGroups, getDynamicVarieties, getFormGroups, getDynamicForms, getDynamicRegions, getCountryGroups, getDynamicCountries, calculateQuote, createLeadBot } = require('../controllers/botController');
+const { getSizeGroups, getDynamicSizes, getPackagingTypeGroups, getDynamicPackagingTypes, getVarietyGroups, getDynamicVarieties, getFormGroups, getDynamicForms, getDynamicRegions, getCountryGroups, getDynamicCountries, calculateQuote, createLeadBot, getLeadById } = require('../controllers/botController');
 
 const router = express.Router();
 
@@ -70,5 +70,11 @@ router.post('/quote', calculateQuote);
 // @desc    Create lead from bot
 // @access  Public
 router.post('/lead', createLeadBot);
+
+
+// @route   GET /api/bot/lead/:id
+// @desc    Get lead by ID
+// @access  Public
+router.get('/lead/:id', getLeadById);
 
 module.exports = router;
